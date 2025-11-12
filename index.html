@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Converter</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Simple spinner for loading state */
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 2px solid #fff;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="h-full bg-gray-900 flex items-center justify-center font-sans p-4">
+
+    <div class="max-w-md w-full bg-white/10 backdrop-blur-lg text-white rounded-2xl shadow-2xl p-6 sm:p-8">
+        
+        <h1 class="text-2xl sm:text-3xl font-bold text-center mb-4">
+            Currency Converter
+        </h1>
+
+        <!-- Rate display -->
+        <div id="rate-display" class="flex items-center justify-center space-x-2 text-lg text-gray-300 mb-6 h-6">
+            <!-- Loading spinner -->
+            <div class="spinner"></div>
+            <span>Loading latest rate...</span>
+        </div>
+
+        <div class="space-y-6">
+            <!-- AED Input -->
+            <div>
+                <label for="aed" class="block text-sm font-medium text-gray-200 mb-2">
+                    🇦🇪 AED (Dirham)
+                </label>
+                <input type="number" id="aed-input" name="aed" 
+                       placeholder="Enter amount in AED"
+                       class="block w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white text-lg placeholder-gray-400
+                              focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
+                       aria-label="AED amount">
+            </div>
+
+            <!-- INR Input -->
+            <div>
+                <label for="inr" class="block text-sm font-medium text-gray-200 mb-2">
+                    🇮🇳 INR (Rupee)
+                </label>
+                <input type="number" id="inr-input" name="inr" 
+                       placeholder="Enter amount in INR"
+                       class="block w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white text-lg placeholder-gray-400
+                              focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
+                       aria-label="INR amount">
+            </div>
+        </div>
+        
+        <!-- Clear Button -->
+        <div class="flex justify-center items-center space-x-4 mt-6"> <!-- Added items-center and space-x-4 -->
+            <button id="decimal-toggle-button" title="Switch to two decimals"
+                    class="text-gray-500 hover:text-cyan-400 transition-colors duration-200 rounded-full p-2
+                           focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50">
+                <!-- Inline SVG "calculator" icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 14h.01M12 17h.01M15 17h.01M9 10h.01M12 10h.01M15 10h.01M6 21h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            </button>
+
+            <button id="clear-button" title="Clear inputs"
+                    class="text-gray-500 hover:text-cyan-400 transition-colors duration-200 rounded-full p-2
+                           focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50">
+                <!-- Inline SVG "X" in a circle icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+        </div>
+
+        <p class="text-xs text-gray-500 text-center mt-4"> <!-- Adjusted margin-top -->
+            Rates are fetched live.
+        </p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const aedInput = document.getElementById('aed-input');
+            const inrInput = document.getElementById('inr-input');
+            const rateDisplay = document.getElementById('rate-display');
+            const clearButton = document.getElementById('clear-button');
+            const decimalToggleButton = document.getElementById('decimal-toggle-button'); // Get the new toggle button
+
+            let exchangeRate;
+            let isAedToInr = true; // Track conversion direction to prevent loops
+            let showDecimals = false; // State for decimal toggle - DEFAULT TO FALSE
+
+            // This is a free, no-key API that provides daily currency updates
+            const API_URL = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json';
+
+            // 1. Fetch the exchange rate on load
+            async function fetchExchangeRate() {
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.json();
+                    
+                    // The API returns all rates against AED. We need the 'inr' rate.
+                    exchangeRate = data.aed.inr; 
+                    
+                    if (exchangeRate) {
+                        // Update the rate display
+                        rateDisplay.innerHTML = `
+                            <span class="font-semibold">1 AED = ${exchangeRate.toFixed(4)} INR</span>
+                        `;
+                    } else {
+                        throw new Error('Could not find INR rate in API response.');
+                    }
+                } catch (error) {
+                    console.error('Error fetching exchange rate:', error);
+                    rateDisplay.textContent = 'Could not load rate.';
+                    rateDisplay.classList.add('text-red-400');
+                }
+            }
+
+            // 2. Function to convert AED to INR
+            function convertAedToInr() {
+                if (!exchangeRate || !isAedToInr) return;
+                
+                const aedValue = parseFloat(aedInput.value);
+                if (isNaN(aedValue) || aedValue === 0) {
+                    inrInput.value = '';
+                    return;
+                }
+                
+                const inrValue = aedValue * exchangeRate;
+                
+                // Check the toggle state
+                if (showDecimals) {
+                    inrInput.value = inrValue.toFixed(2); // Show two decimals
+                } else {
+                    inrInput.value = Math.ceil(inrValue); // Show no decimals, rounded up
+                }
+            }
+
+            // 3. Function to convert INR to AED
+            function convertInrToAed() {
+                if (!exchangeRate || isAedToInr) return;
+                
+                const inrValue = parseFloat(inrInput.value);
+                if (isNaN(inrValue) || inrValue === 0) {
+                    aedInput.value = '';
+                    return;
+                }
+                
+                const aedValue = inrValue / exchangeRate;
+                aedInput.value = aedValue.toFixed(2);
+            }
+
+            // 4. Add event listeners
+            aedInput.addEventListener('focus', () => { isAedToInr = true; });
+            inrInput.addEventListener('focus', () => { isAedToInr = false; });
+            
+            aedInput.addEventListener('input', convertAedToInr);
+            inrInput.addEventListener('input', convertInrToAed);
+
+            // Add click listener for the clear button
+            clearButton.addEventListener('click', () => {
+                aedInput.value = '';
+                inrInput.value = '';
+            });
+
+            // Add click listener for the decimal toggle button
+            decimalToggleButton.addEventListener('click', () => {
+                // Toggle the state
+                showDecimals = !showDecimals; 
+                
+                // Update button appearance and title
+                if (showDecimals) {
+                    decimalToggleButton.classList.remove('text-gray-500');
+                    decimalToggleButton.classList.remove('hover:text-cyan-400');
+                    decimalToggleButton.classList.add('text-cyan-400');
+                    decimalToggleButton.classList.add('hover:text-cyan-300');
+                    decimalToggleButton.title = "Switch to no decimals (round up)";
+                } else {
+                    decimalToggleButton.classList.remove('text-cyan-400');
+                    decimalToggleButton.classList.remove('hover:text-cyan-300');
+                    decimalToggleButton.classList.add('text-gray-500');
+                    decimalToggleButton.classList.add('hover:text-cyan-400');
+                    decimalToggleButton.title = "Switch to two decimals";
+                }
+
+                // Re-run the AED to INR conversion to update the display immediately
+                if (aedInput.value) {
+                    isAedToInr = true; // Ensure we are converting AED -> INR
+                    convertAedToInr();
+                }
+            });
+
+            // 5. Initial fetch
+            fetchExchangeRate();
+        });
+    </script>
+
+</body>
+</html>
