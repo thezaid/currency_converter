@@ -41,6 +41,21 @@
         input[type=number] {
             -moz-appearance: textfield;
         }
+        
+        /* Custom scrollbar for history */
+        #history-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #history-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #history-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        #history-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
     </style>
 </head>
 <body class="h-full bg-gray-900 flex items-center justify-center font-sans p-4">
@@ -84,8 +99,8 @@
             </div>
         </div>
         
-        <!-- Clear Button -->
-        <div class="flex justify-center items-center space-x-4 mt-6"> <!-- Added items-center and space-x-4 -->
+        <!-- Controls: Decimal, Clear, Clear History -->
+        <div class="flex justify-center items-center space-x-4 mt-6"> 
             <button id="decimal-toggle-button" title="Switch to two decimals"
                     class="text-gray-500 hover:text-cyan-400 transition-colors duration-200 rounded-full p-2
                            focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50">
@@ -103,9 +118,29 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </button>
+            
+            <button id="clear-history-button" title="Clear history"
+                    class="text-gray-500 hover:text-red-400 transition-colors duration-200 rounded-full p-2
+                           focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50">
+                <!-- Inline SVG "trash" icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
         </div>
 
-        <p class="text-xs text-gray-500 text-center mt-4"> <!-- Adjusted margin-top -->
+        <!-- History Section -->
+        <div id="history-section" class="mt-8 border-t border-white/10 pt-4" style="display: none;"> <!-- Hidden by default -->
+             <h2 class="text-lg font-semibold text-center mb-3">
+                History
+            </h2>
+            <div id="history-container" class="max-h-40 overflow-y-auto space-y-2 pr-2">
+                <!-- History items will be injected here -->
+                <p id="history-placeholder" class="text-sm text-gray-500 text-center">No history yet.</p>
+            </div>
+        </div>
+
+        <p id="update-status" class="text-xs text-gray-500 text-center mt-6"> <!-- Adjusted margin-top -->
             Rates are fetched live.
         </p>
     </div>
@@ -116,118 +151,266 @@
             const inrInput = document.getElementById('inr-input');
             const rateDisplay = document.getElementById('rate-display');
             const clearButton = document.getElementById('clear-button');
-            const decimalToggleButton = document.getElementById('decimal-toggle-button'); // Get the new toggle button
+            const decimalToggleButton = document.getElementById('decimal-toggle-button');
+            const updateStatus = document.getElementById('update-status');
+            const historySection = document.getElementById('history-section');
+            const historyContainer = document.getElementById('history-container');
+            const historyPlaceholder = document.getElementById('history-placeholder');
+            const clearHistoryButton = document.getElementById('clear-history-button');
 
             let exchangeRate;
-            let isAedToInr = true; // Track conversion direction to prevent loops
-            let showDecimals = false; // State for decimal toggle - DEFAULT TO FALSE
+            let lastFetchedTime;
+            let isAedToInr = true; 
+            let showDecimals = false; 
+            let history = []; // Array to hold history objects
 
-            // This is a free, no-key API that provides daily currency updates
             const API_URL = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json';
+            const STORAGE_KEYS = {
+                RATE: 'currencyConverterRate',
+                TIMESTAMP: 'currencyConverterTimestamp',
+                HISTORY: 'currencyConverterHistory' // Key for history
+            };
+            
+            // --- History Functions ---
 
-            // 1. Fetch the exchange rate on load
+            // 1. Render the history list in the DOM
+            function renderHistory() {
+                // Clear current list
+                historyContainer.innerHTML = ''; 
+
+                if (history.length === 0) {
+                    historyContainer.appendChild(historyPlaceholder); // Show placeholder
+                    historySection.style.display = 'none'; // Hide section if empty
+                } else {
+                    historySection.style.display = 'block'; // Show section
+                    
+                    history.forEach(item => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'flex justify-between items-center bg-white/5 p-2 rounded-lg text-sm transition-all duration-200';
+                        
+                        const conversionText = `🇦🇪 ${item.aed} &rarr; 🇮🇳 ${item.inr}`;
+                        const time = new Date(item.timestamp);
+                        const formattedTime = time.toLocaleTimeString('en-US', {
+                            hour: 'numeric', minute: '2-digit'
+                        });
+
+                        historyItem.innerHTML = `
+                            <span class="text-gray-200 font-medium">${conversionText}</span>
+                            <span class="text-xs text-gray-500">${formattedTime}</span>
+                        `;
+                        historyContainer.appendChild(historyItem);
+                    });
+                }
+            }
+
+            // 2. Save the history array to localStorage
+            function saveHistory() {
+                localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
+            }
+
+            // 3. Load history from localStorage
+            function loadHistory() {
+                const storedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
+                if (storedHistory) {
+                    history = JSON.parse(storedHistory);
+                }
+                renderHistory(); // Render whatever we loaded
+            }
+
+            // 4. Add a new item to history
+            function addHistoryItem() {
+                const aedVal = aedInput.value;
+                const inrVal = inrInput.value;
+
+                // Don't save empty or zero values
+                if (!aedVal || !inrVal || parseFloat(aedVal) === 0 || parseFloat(inrVal) === 0) {
+                    return;
+                }
+
+                // Don't save if it's identical to the most recent entry
+                const latest = history[0];
+                if (latest && latest.aed === aedVal && latest.inr === inrVal) {
+                    return;
+                }
+
+                // Add to the beginning of the array
+                history.unshift({
+                    aed: aedVal,
+                    inr: inrVal,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Keep history limited to 10 items
+                history = history.slice(0, 10);
+                
+                saveHistory();
+                renderHistory();
+            }
+
+            // 5. Clear history
+            function clearHistory() {
+                history = [];
+                saveHistory();
+                renderHistory();
+            }
+
+            // --- Rate Fetching and Display ---
+            
+            /**
+             * Formats a date object into a relative time string (e.g., "2 minutes ago").
+             * @param {Date} date - The date object to format.
+             */
+            function formatTimeAgo(date) {
+                if (!date) return '';
+                const now = new Date();
+                const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+                if (seconds < 60) return 'just now';
+                
+                const minutes = Math.floor(seconds / 60);
+                if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+                
+                const hours = Math.floor(minutes / 60);
+                if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+                
+                const days = Math.floor(hours / 24);
+                return `${days} day${days > 1 ? 's' : ''} ago`;
+            }
+
+            function updateRateDisplay(isOffline = false) {
+                if (!exchangeRate) return;
+
+                rateDisplay.innerHTML = `
+                    <span class="font-semibold">1 AED = ${exchangeRate.toFixed(4)} INR</span>
+                `;
+
+                const relativeTime = formatTimeAgo(lastFetchedTime);
+
+                if (isOffline) {
+                    updateStatus.textContent = `Offline. Using rate from ${relativeTime}.`;
+                    updateStatus.classList.add('text-yellow-400');
+                    updateStatus.classList.remove('text-gray-500');
+                } else {
+                    updateStatus.textContent = `Rate updated ${relativeTime}.`;
+                    updateStatus.classList.remove('text-yellow-400');
+                    updateStatus.classList.add('text-gray-500');
+                }
+            }
+            
+            function loadFromCache() {
+                const cachedRate = localStorage.getItem(STORAGE_KEYS.RATE);
+                const cachedTime = localStorage.getItem(STORAGE_KEYS.TIMESTAMP);
+
+                if (cachedRate && cachedTime) {
+                    exchangeRate = parseFloat(cachedRate);
+                    lastFetchedTime = new Date(cachedTime);
+                    updateRateDisplay(true);
+                }
+            }
+
             async function fetchExchangeRate() {
                 try {
                     const response = await fetch(API_URL);
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
+                    if (!response.ok) throw new Error('Network response was not ok');
                     const data = await response.json();
                     
-                    // The API returns all rates against AED. We need the 'inr' rate.
-                    exchangeRate = data.aed.inr; 
-                    
-                    if (exchangeRate) {
-                        // Update the rate display
-                        rateDisplay.innerHTML = `
-                            <span class="font-semibold">1 AED = ${exchangeRate.toFixed(4)} INR</span>
-                        `;
+                    if (data.aed && data.aed.inr) {
+                        exchangeRate = data.aed.inr;
+                        lastFetchedTime = new Date(); 
+                        
+                        localStorage.setItem(STORAGE_KEYS.RATE, exchangeRate);
+                        localStorage.setItem(STORAGE_KEYS.TIMESTAMP, lastFetchedTime.toISOString());
+                        
+                        updateRateDisplay(false); 
                     } else {
                         throw new Error('Could not find INR rate in API response.');
                     }
                 } catch (error) {
                     console.error('Error fetching exchange rate:', error);
-                    rateDisplay.textContent = 'Could not load rate.';
-                    rateDisplay.classList.add('text-red-400');
+                    if (exchangeRate) {
+                        updateRateDisplay(true); 
+                    } else {
+                        rateDisplay.textContent = 'Could not load rate.';
+                        rateDisplay.classList.add('text-red-400');
+                        updateStatus.textContent = 'Please check your connection.';
+                    }
                 }
             }
 
-            // 2. Function to convert AED to INR
+            // --- Conversion Functions ---
+
             function convertAedToInr() {
                 if (!exchangeRate || !isAedToInr) return;
-                
                 const aedValue = parseFloat(aedInput.value);
                 if (isNaN(aedValue) || aedValue === 0) {
                     inrInput.value = '';
                     return;
                 }
-                
                 const inrValue = aedValue * exchangeRate;
-                
-                // Check the toggle state
-                if (showDecimals) {
-                    inrInput.value = inrValue.toFixed(2); // Show two decimals
-                } else {
-                    inrInput.value = Math.ceil(inrValue); // Show no decimals, rounded up
-                }
+                inrInput.value = showDecimals ? inrValue.toFixed(2) : Math.ceil(inrValue);
             }
 
-            // 3. Function to convert INR to AED
             function convertInrToAed() {
                 if (!exchangeRate || isAedToInr) return;
-                
                 const inrValue = parseFloat(inrInput.value);
                 if (isNaN(inrValue) || inrValue === 0) {
                     aedInput.value = '';
                     return;
                 }
-                
                 const aedValue = inrValue / exchangeRate;
                 aedInput.value = aedValue.toFixed(2);
             }
 
-            // 4. Add event listeners
+            // --- Event Listeners ---
+
             aedInput.addEventListener('focus', () => { isAedToInr = true; });
             inrInput.addEventListener('focus', () => { isAedToInr = false; });
             
             aedInput.addEventListener('input', convertAedToInr);
             inrInput.addEventListener('input', convertInrToAed);
 
-            // Add click listener for the clear button
+            // Save to history on blur (when user clicks away)
+            aedInput.addEventListener('blur', addHistoryItem);
+            inrInput.addEventListener('blur', addHistoryItem);
+
             clearButton.addEventListener('click', () => {
                 aedInput.value = '';
                 inrInput.value = '';
             });
 
-            // Add click listener for the decimal toggle button
+            clearHistoryButton.addEventListener('click', clearHistory);
+
             decimalToggleButton.addEventListener('click', () => {
-                // Toggle the state
                 showDecimals = !showDecimals; 
-                
-                // Update button appearance and title
                 if (showDecimals) {
-                    decimalToggleButton.classList.remove('text-gray-500');
-                    decimalToggleButton.classList.remove('hover:text-cyan-400');
-                    decimalToggleButton.classList.add('text-cyan-400');
-                    decimalToggleButton.classList.add('hover:text-cyan-300');
+                    decimalToggleButton.classList.remove('text-gray-500', 'hover:text-cyan-400');
+                    decimalToggleButton.classList.add('text-cyan-400', 'hover:text-cyan-300');
                     decimalToggleButton.title = "Switch to no decimals (round up)";
                 } else {
-                    decimalToggleButton.classList.remove('text-cyan-400');
-                    decimalToggleButton.classList.remove('hover:text-cyan-300');
-                    decimalToggleButton.classList.add('text-gray-500');
-                    decimalToggleButton.classList.add('hover:text-cyan-400');
+                    decimalToggleButton.classList.remove('text-cyan-400', 'hover:text-cyan-300');
+                    decimalToggleButton.classList.add('text-gray-500', 'hover:text-cyan-400');
                     decimalToggleButton.title = "Switch to two decimals";
                 }
-
-                // Re-run the AED to INR conversion to update the display immediately
                 if (aedInput.value) {
-                    isAedToInr = true; // Ensure we are converting AED -> INR
+                    isAedToInr = true; 
                     convertAedToInr();
                 }
             });
 
-            // 5. Initial fetch
-            fetchExchangeRate();
+            // --- Initial Load ---
+            loadFromCache();     // Load cached rate instantly
+            loadHistory();       // Load saved history
+            fetchExchangeRate(); // Try to get fresh data
+
+            // Add an interval to update the relative time every minute
+            setInterval(() => {
+                if (lastFetchedTime) {
+                    // Re-run updateRateDisplay to refresh the 'time ago' string.
+                    // We check navigator.onLine to see if we are currently offline.
+                    // This updates the status even if the API fetch fails.
+                    updateRateDisplay(!navigator.onLine);
+                }
+            }, 60000); // 60,000 milliseconds = 1 minute
         });
     </script>
 
