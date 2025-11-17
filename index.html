@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -74,7 +74,7 @@
         }
     </style>
 </head>
-<body class="h-full bg-black flex items-center justify-center font-sans p-4"> <!-- Changed bg-gray-900 to bg-black -->
+<body class="bg-black flex justify-center font-sans py-12 px-4"> <!-- Changed this line -->
 
     <!-- Changed bg-white/10 to bg-gray-900 and added a border -->
     <div class="max-w-sm w-full bg-gray-900 border border-gray-800 text-white rounded-2xl shadow-2xl p-4 sm:p-6">
@@ -92,31 +92,47 @@
         </div>
 
         <div class="space-y-6">
-            <!-- AED Input -->
-            <div>
-                <label for="aed" class="block text-sm font-medium text-gray-200 mb-2">
-                    🇦🇪 AED (Dirham)
-                </label>
-                <input type="number" id="aed-input" name="aed" 
-                       placeholder="Enter amount in AED"
-                       class="block w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-base placeholder-gray-400
-                              focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
-                       aria-label="AED amount" readonly> <!-- Changed bg-white/5 and border-white/20 -->
-            </div>
-
-            <!-- INR Input -->
-            <div>
-                <label for="inr" class="block text-sm font-medium text-gray-200 mb-2">
-                    🇮🇳 INR (Rupee)
-                </label>
-                <input type="number" id="inr-input" name="inr" 
-                       placeholder="Enter amount in INR"
-                       class="block w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-base placeholder-gray-400
-                              focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
-                       aria-label="INR amount" readonly> <!-- Changed bg-white/5 and border-white/20 -->
-            </div>
+            <!-- This block is replaced -->
         </div>
         
+        <!-- NEW Input/Output Row -->
+        <!-- Removed 'relative' from this container -->
+        <div class="flex items-end justify-between space-x-2 sm:space-x-3 mt-6">
+            <!-- From Input -->
+            <div class="flex-1">
+                <label id="from-label" for="from-input" class="block text-sm font-medium text-gray-200 mb-2">
+                    <!-- Set by JS -->
+                </label>
+                <input type="number" id="from-input" name="from" 
+                       
+                       class="block w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-base
+                              focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
+                       aria-label="Amount to convert" readonly> <!-- Readonly to force keypad -->
+            </div>
+
+            <!-- Swap Button -->
+            <!-- Removed absolute positioning classes -->
+            <!-- Added mb-1 to align with the bottom of the input boxes -->
+            <button id="swap-button" title="Swap currencies"
+                    class="flex-shrink-0 text-gray-400 hover:text-cyan-400 bg-gray-800/50 hover:bg-gray-700/50 rounded-full p-3 transition-all duration-200
+                           focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50
+                           mb-1">
+                <i data-lucide="arrow-right-left" class="h-5 w-5"></i>
+            </button>
+
+            <!-- To Output -->
+            <div class="flex-1">
+                <label id="to-label" for="to-input" class="block text-sm font-medium text-gray-200 mb-2">
+                    <!-- Set by JS -->
+                </label>
+                <input type="number" id="to-input" name="to" 
+                       
+                       class="block w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-base text-gray-400
+                              focus:outline-none transition-all duration-200 pointer-events-none"
+                       aria-label="Converted amount" readonly> <!-- Readonly, this is an output. Added pointer-events-none -->
+            </div>
+        </div>
+
         <!-- On-page Keypad -->
         <div id="keypad" class="grid grid-cols-3 gap-2 sm:gap-3 mt-6">
             <!-- Changed bg-white/5 to bg-gray-800/50 and hover:bg-white/10 to hover:bg-gray-700/50 -->
@@ -189,8 +205,16 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Get all elements
-            const aedInput = document.getElementById('aed-input');
-            const inrInput = document.getElementById('inr-input');
+            const fromInput = document.getElementById('from-input');
+            const fromLabel = document.getElementById('from-label');
+            const toInput = document.getElementById('to-input');
+            const toLabel = document.getElementById('to-label');
+            const swapButton = document.getElementById('swap-button');
+            
+            // Old elements for removal
+            // const aedInput = document.getElementById('aed-input');
+            // const inrInput = document.getElementById('inr-input');
+            
             const rateDisplay = document.getElementById('rate-display');
             const clearButton = document.getElementById('clear-button');
             const decimalToggleButton = document.getElementById('decimal-toggle-button');
@@ -205,10 +229,11 @@
             // State variables
             let exchangeRate;
             let lastFetchedTime;
-            let isAedToInr = true; 
+            let isAedToInr = true; // true: AED -> INR, false: INR -> AED
             let showDecimals = false; 
             let history = []; 
-            let activeInput = null; // Track the currently focused input
+            let historySaveTimer; // Timer for debouncing history save
+            // 'activeInput' is no longer needed
 
             const API_URL = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json';
             const STORAGE_KEYS = {
@@ -256,11 +281,22 @@
             }
 
             function addHistoryItem() {
-                const aedVal = aedInput.value;
-                const inrVal = inrInput.value;
-                if (!aedVal || !inrVal || parseFloat(aedVal) === 0 || parseFloat(inrVal) === 0) {
+                const fromVal = fromInput.value;
+                const toVal = toInput.value;
+
+                if (!fromVal || !toVal || parseFloat(fromVal) === 0 || parseFloat(toVal) === 0) {
                     return;
                 }
+
+                let aedVal, inrVal;
+                if (isAedToInr) {
+                    aedVal = fromVal;
+                    inrVal = toVal;
+                } else {
+                    aedVal = toVal;
+                    inrVal = fromVal;
+                }
+
                 const latest = history[0];
                 if (latest && latest.aed === aedVal && latest.inr === inrVal) {
                     return;
@@ -279,6 +315,48 @@
                 history = [];
                 saveHistory();
                 renderHistory();
+            }
+
+            // --- Conversion & Display Logic ---
+
+            /**
+             * Updates the labels and placeholders based on the current `isAedToInr` state.
+             */
+            function updateDisplayOrder() {
+                if (isAedToInr) {
+                    fromLabel.innerHTML = '🇦🇪 AED';
+                    toLabel.innerHTML = '🇮🇳 INR';
+                    
+                    
+                } else {
+                    fromLabel.innerHTML = '🇮🇳 INR';
+                    toLabel.innerHTML = '🇦🇪 AED';
+                    
+                    
+                }
+            }
+            
+            /**
+             * The single function to calculate conversion, called by keypad and swap.
+             */
+            function convert() {
+                if (!exchangeRate) return;
+                const fromValue = parseFloat(fromInput.value);
+                
+                if (isNaN(fromValue) || fromValue === 0) {
+                    toInput.value = '';
+                    return;
+                }
+
+                if (isAedToInr) {
+                    // Converting AED -> INR
+                    const toValue = fromValue * exchangeRate;
+                    toInput.value = showDecimals ? toValue.toFixed(2) : Math.ceil(toValue);
+                } else {
+                    // Converting INR -> AED
+                    const toValue = fromValue / exchangeRate;
+                    toInput.value = toValue.toFixed(2);
+                }
             }
 
             // --- Rate Fetching and Display ---
@@ -353,51 +431,22 @@
                 }
             }
 
-            // --- Conversion Functions ---
-
-            function convertAedToInr() {
-                if (!exchangeRate || !isAedToInr) return;
-                const aedValue = parseFloat(aedInput.value);
-                if (isNaN(aedValue) || aedValue === 0) {
-                    inrInput.value = '';
-                    return;
-                }
-                const inrValue = aedValue * exchangeRate;
-                inrInput.value = showDecimals ? inrValue.toFixed(2) : Math.ceil(inrValue);
-            }
-
-            function convertInrToAed() {
-                if (!exchangeRate || isAedToInr) return;
-                const inrValue = parseFloat(inrInput.value);
-                if (isNaN(inrValue) || inrValue === 0) {
-                    aedInput.value = '';
-                    return;
-                }
-                const aedValue = inrValue / exchangeRate;
-                aedInput.value = aedValue.toFixed(2);
-            }
+            // --- Conversion Functions (OLD - REMOVED) ---
+            // function convertAedToInr() { ... }
+            // function convertInrToAed() { ... }
 
             // --- Event Listeners ---
 
-            aedInput.addEventListener('focus', () => { 
-                isAedToInr = true; 
-                activeInput = aedInput; // Set active input
-            });
-            inrInput.addEventListener('focus', () => { 
-                isAedToInr = false; 
-                activeInput = inrInput; // Set active input
-            });
+            // Remove old focus listeners
+            // aedInput.addEventListener('focus', () => { ... });
+            // inrInput.addEventListener('focus', () => { ... });
             
-            // Remove direct input listeners, as we now use the keypad
-            // aedInput.addEventListener('input', convertAedToInr);
-            // inrInput.addEventListener('input', convertInrToAed);
-
-            aedInput.addEventListener('blur', addHistoryItem);
-            inrInput.addEventListener('blur', addHistoryItem);
+            // Add blur listener to the new 'from' input
+            // fromInput.addEventListener('blur', addHistoryItem); // REMOVED - Replaced with debounce in keypad
 
             clearButton.addEventListener('click', () => {
-                aedInput.value = '';
-                inrInput.value = '';
+                fromInput.value = '';
+                toInput.value = '';
             });
 
             clearHistoryButton.addEventListener('click', clearHistory);
@@ -413,13 +462,10 @@
                     decimalToggleButton.classList.add('text-gray-500', 'hover:text-cyan-400');
                     decimalToggleButton.title = "Switch to two decimals";
                 }
-                if (aedInput.value) {
-                    isAedToInr = true; 
-                    convertAedToInr();
-                }
+                convert(); // Just re-run the conversion
             });
 
-            // NEW: Event listener for the refresh button
+            // Event listener for the refresh button
             getRatesButton.addEventListener('click', () => {
                 // Show immediate feedback that it's working
                 rateDisplay.innerHTML = `
@@ -430,32 +476,56 @@
                 fetchExchangeRate();
             });
 
+            // NEW: Event listener for the swap button
+            swapButton.addEventListener('click', () => {
+                isAedToInr = !isAedToInr; // Toggle state
+
+                // Swap values
+                const fromVal = fromInput.value;
+                const toVal = toInput.value;
+                fromInput.value = toVal; // Move "to" value to "from" input
+
+                updateDisplayOrder(); // Update labels
+                convert(); // Recalculate based on new fromInput
+                
+                // Add to history *after* swapping and converting
+                if (fromInput.value) {
+                    addHistoryItem();
+                }
+                
+                fromInput.focus({ preventScroll: true }); // Refocus
+            });
+
             // --- Keypad Logic ---
             keypad.addEventListener('click', (e) => {
                 const key = e.target.closest('.keypad-button');
-                if (!key || !activeInput) return; // Do nothing if no key or no active input
+                if (!key) return; // No activeInput check needed
 
                 const keyValue = key.dataset.key;
 
                 if (keyValue === 'backspace') {
                     // Handle backspace
-                    activeInput.value = activeInput.value.slice(0, -1);
+                    fromInput.value = fromInput.value.slice(0, -1);
                 } else if (keyValue === '.') {
                     // Handle decimal, only add if one doesn't exist
-                    if (!activeInput.value.includes('.')) {
-                        activeInput.value += keyValue;
+                    if (!fromInput.value.includes('.')) {
+                        fromInput.value += keyValue;
                     }
                 } else {
                     // Handle number
-                    activeInput.value += keyValue;
+                    fromInput.value += keyValue;
                 }
 
                 // Manually trigger the correct conversion
-                if (activeInput === aedInput) {
-                    convertAedToInr();
-                } else {
-                    convertInrToAed();
-                }
+                convert();
+
+                // --- NEW: Debounce logic for saving to history ---
+                // Clear any existing timer
+                clearTimeout(historySaveTimer);
+                // Set a new timer to save after 1.5 seconds of inactivity
+                historySaveTimer = setTimeout(() => {
+                    addHistoryItem();
+                }, 1500); // 1.5 seconds
             });
 
             // Add visual press effect for keypad buttons
@@ -476,6 +546,7 @@
             // --- Initial Load ---
             const cacheLoaded = loadFromCache();     // Load cached rate instantly
             loadHistory();       // Load saved history
+            updateDisplayOrder(); // Set initial labels
             
             // If cache was empty, fetch a rate. Otherwise, wait for user.
             if (!cacheLoaded) {
@@ -492,11 +563,8 @@
             // Render all Lucide icons
             lucide.createIcons();
 
-            // --- Set AED as default active input ---
-            activeInput = aedInput;
-            // Programmatically focus for visual feedback (ring)
-            // 'preventScroll' is good practice, though not essential here.
-            aedInput.focus({ preventScroll: true });
+            // --- Set default focus ---
+            fromInput.focus({ preventScroll: true });
         });
     </script>
 
