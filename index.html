@@ -4,14 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Currency Converter</title>
+    
+    <!-- Add Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Open Sans', 'sans-serif'],
                     },
                 },
             },
@@ -56,21 +66,29 @@
         #history-container::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.4);
         }
+
+        /* Style for the keypad button press */
+        .key-active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.15); /* Made less bright */
+        }
     </style>
 </head>
-<body class="h-full bg-gray-900 flex items-center justify-center font-sans p-4">
+<body class="h-full bg-black flex items-center justify-center font-sans p-4"> <!-- Changed bg-gray-900 to bg-black -->
 
-    <div class="max-w-md w-full bg-white/10 backdrop-blur-lg text-white rounded-2xl shadow-2xl p-6 sm:p-8">
+    <!-- Changed bg-white/10 to bg-gray-900 and added a border -->
+    <div class="max-w-sm w-full bg-gray-900 border border-gray-800 text-white rounded-2xl shadow-2xl p-4 sm:p-6">
         
-        <h1 class="text-2xl sm:text-3xl font-bold text-center mb-4">
+        <h1 class="text-xl sm:text-2xl font-bold text-center mb-4">
             Currency Converter
         </h1>
 
         <!-- Rate display -->
-        <div id="rate-display" class="flex items-center justify-center space-x-2 text-lg text-gray-300 mb-6 h-6">
+        <div id="rate-display" class="flex items-center justify-center space-x-2 text-base text-gray-300 mb-6 h-6">
             <!-- Loading spinner -->
             <div class="spinner"></div>
-            <span>Loading latest rate...</span>
+            <!-- Updated initial text -->
+            <span>Loading rate...</span>
         </div>
 
         <div class="space-y-6">
@@ -81,9 +99,9 @@
                 </label>
                 <input type="number" id="aed-input" name="aed" 
                        placeholder="Enter amount in AED"
-                       class="block w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white text-lg placeholder-gray-400
+                       class="block w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-base placeholder-gray-400
                               focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
-                       aria-label="AED amount">
+                       aria-label="AED amount" readonly> <!-- Changed bg-white/5 and border-white/20 -->
             </div>
 
             <!-- INR Input -->
@@ -93,45 +111,67 @@
                 </label>
                 <input type="number" id="inr-input" name="inr" 
                        placeholder="Enter amount in INR"
-                       class="block w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white text-lg placeholder-gray-400
+                       class="block w-full bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-base placeholder-gray-400
                               focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all duration-200"
-                       aria-label="INR amount">
+                       aria-label="INR amount" readonly> <!-- Changed bg-white/5 and border-white/20 -->
             </div>
         </div>
         
+        <!-- On-page Keypad -->
+        <div id="keypad" class="grid grid-cols-3 gap-2 sm:gap-3 mt-6">
+            <!-- Changed bg-white/5 to bg-gray-800/50 and hover:bg-white/10 to hover:bg-gray-700/50 -->
+            <button data-key="7" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">7</button>
+            <button data-key="8" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">8</button>
+            <button data-key="9" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">9</button>
+            <button data-key="4" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">4</button>
+            <button data-key="5" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">5</button>
+            <button data-key="6" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">6</button>
+            <button data-key="1" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">1</button>
+            <button data-key="2" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">2</button>
+            <button data-key="3" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">3</button>
+            <button data-key="." class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-xl font-semibold p-3 rounded-lg transition-all duration-150">.</button>
+            <button data-key="0" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 text-lg font-semibold p-3 rounded-lg transition-all duration-150">0</button>
+            <button data-key="backspace" class="keypad-button bg-gray-800/50 hover:bg-gray-700/50 p-3 rounded-lg transition-all duration-150 flex items-center justify-center">
+                <!-- Lucide "delete" (backspace) icon -->
+                <i data-lucide="delete" class="h-5 w-5"></i>
+            </button>
+        </div>
+
         <!-- Controls: Decimal, Clear, Clear History -->
         <div class="flex justify-center items-center space-x-4 mt-6"> 
             <button id="decimal-toggle-button" title="Switch to two decimals"
                     class="text-gray-500 hover:text-cyan-400 transition-colors duration-200 rounded-full p-2
                            focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50">
-                <!-- Inline SVG "calculator" icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 14h.01M12 17h.01M15 17h.01M9 10h.01M12 10h.01M15 10h.01M6 21h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
+                <!-- Lucide "calculator" icon -->
+                <i data-lucide="calculator" class="h-5 w-5"></i>
             </button>
 
             <button id="clear-button" title="Clear inputs"
                     class="text-gray-500 hover:text-cyan-400 transition-colors duration-200 rounded-full p-2
                            focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50">
-                <!-- Inline SVG "X" in a circle icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <!-- Lucide "x-circle" icon -->
+                <i data-lucide="x-circle" class="h-5 w-5"></i>
             </button>
             
             <button id="clear-history-button" title="Clear history"
                     class="text-gray-500 hover:text-red-400 transition-colors duration-200 rounded-full p-2
                            focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50">
-                <!-- Inline SVG "trash" icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+                <!-- Lucide "trash-2" icon -->
+                <i data-lucide="trash-2" class="h-5 w-5"></i>
+            </button>
+
+            <!-- NEW "Get Live Rate" Button -->
+            <button id="get-rates-button" title="Get live rate"
+                    class="text-gray-500 hover:text-cyan-400 transition-colors duration-200 rounded-full p-2
+                           focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-opacity-50">
+                <!-- Lucide "refresh-cw" icon -->
+                <i data-lucide="refresh-cw" class="h-5 w-5"></i>
             </button>
         </div>
 
         <!-- History Section -->
-        <div id="history-section" class="mt-8 border-t border-white/10 pt-4" style="display: none;"> <!-- Hidden by default -->
-             <h2 class="text-lg font-semibold text-center mb-3">
+        <div id="history-section" class="mt-8 border-t border-gray-800 pt-4" style="display: none;"> <!-- Changed border-white/10 to border-gray-800 -->
+             <h2 class="text-base font-semibold text-center mb-3">
                 History
             </h2>
             <div id="history-container" class="max-h-40 overflow-y-auto space-y-2 pr-2">
@@ -140,13 +180,15 @@
             </div>
         </div>
 
-        <p id="update-status" class="text-xs text-gray-500 text-center mt-6"> <!-- Adjusted margin-top -->
-            Rates are fetched live.
+        <!-- Updated status text: initially empty, set by JS -->
+        <p id="update-status" class="text-xs text-gray-500 text-center mt-6 h-4">
+            <!-- Content set by JavaScript -->
         </p>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Get all elements
             const aedInput = document.getElementById('aed-input');
             const inrInput = document.getElementById('inr-input');
             const rateDisplay = document.getElementById('rate-display');
@@ -157,43 +199,41 @@
             const historyContainer = document.getElementById('history-container');
             const historyPlaceholder = document.getElementById('history-placeholder');
             const clearHistoryButton = document.getElementById('clear-history-button');
+            const getRatesButton = document.getElementById('get-rates-button'); // Get the new button
+            const keypad = document.getElementById('keypad'); // Get the keypad
 
+            // State variables
             let exchangeRate;
             let lastFetchedTime;
             let isAedToInr = true; 
             let showDecimals = false; 
-            let history = []; // Array to hold history objects
+            let history = []; 
+            let activeInput = null; // Track the currently focused input
 
             const API_URL = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json';
             const STORAGE_KEYS = {
                 RATE: 'currencyConverterRate',
                 TIMESTAMP: 'currencyConverterTimestamp',
-                HISTORY: 'currencyConverterHistory' // Key for history
+                HISTORY: 'currencyConverterHistory'
             };
             
             // --- History Functions ---
 
-            // 1. Render the history list in the DOM
             function renderHistory() {
-                // Clear current list
                 historyContainer.innerHTML = ''; 
-
                 if (history.length === 0) {
-                    historyContainer.appendChild(historyPlaceholder); // Show placeholder
-                    historySection.style.display = 'none'; // Hide section if empty
+                    historyContainer.appendChild(historyPlaceholder);
+                    historySection.style.display = 'none';
                 } else {
-                    historySection.style.display = 'block'; // Show section
-                    
+                    historySection.style.display = 'block'; 
                     history.forEach(item => {
                         const historyItem = document.createElement('div');
-                        historyItem.className = 'flex justify-between items-center bg-white/5 p-2 rounded-lg text-sm transition-all duration-200';
-                        
+                        historyItem.className = 'flex justify-between items-center bg-gray-800/50 p-2 rounded-lg text-sm transition-all duration-200'; // Changed bg-white/5
                         const conversionText = `🇦🇪 ${item.aed} &rarr; 🇮🇳 ${item.inr}`;
                         const time = new Date(item.timestamp);
                         const formattedTime = time.toLocaleTimeString('en-US', {
                             hour: 'numeric', minute: '2-digit'
                         });
-
                         historyItem.innerHTML = `
                             <span class="text-gray-200 font-medium">${conversionText}</span>
                             <span class="text-xs text-gray-500">${formattedTime}</span>
@@ -203,51 +243,38 @@
                 }
             }
 
-            // 2. Save the history array to localStorage
             function saveHistory() {
                 localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
             }
 
-            // 3. Load history from localStorage
             function loadHistory() {
                 const storedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
                 if (storedHistory) {
                     history = JSON.parse(storedHistory);
                 }
-                renderHistory(); // Render whatever we loaded
+                renderHistory();
             }
 
-            // 4. Add a new item to history
             function addHistoryItem() {
                 const aedVal = aedInput.value;
                 const inrVal = inrInput.value;
-
-                // Don't save empty or zero values
                 if (!aedVal || !inrVal || parseFloat(aedVal) === 0 || parseFloat(inrVal) === 0) {
                     return;
                 }
-
-                // Don't save if it's identical to the most recent entry
                 const latest = history[0];
                 if (latest && latest.aed === aedVal && latest.inr === inrVal) {
                     return;
                 }
-
-                // Add to the beginning of the array
                 history.unshift({
                     aed: aedVal,
                     inr: inrVal,
                     timestamp: new Date().toISOString()
                 });
-
-                // Keep history limited to 10 items
                 history = history.slice(0, 10);
-                
                 saveHistory();
                 renderHistory();
             }
 
-            // 5. Clear history
             function clearHistory() {
                 history = [];
                 saveHistory();
@@ -256,36 +283,25 @@
 
             // --- Rate Fetching and Display ---
             
-            /**
-             * Formats a date object into a relative time string (e.g., "2 minutes ago").
-             * @param {Date} date - The date object to format.
-             */
             function formatTimeAgo(date) {
                 if (!date) return '';
                 const now = new Date();
                 const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
                 if (seconds < 60) return 'just now';
-                
                 const minutes = Math.floor(seconds / 60);
                 if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-                
                 const hours = Math.floor(minutes / 60);
                 if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-                
                 const days = Math.floor(hours / 24);
                 return `${days} day${days > 1 ? 's' : ''} ago`;
             }
 
             function updateRateDisplay(isOffline = false) {
                 if (!exchangeRate) return;
-
                 rateDisplay.innerHTML = `
                     <span class="font-semibold">1 AED = ${exchangeRate.toFixed(4)} INR</span>
                 `;
-
                 const relativeTime = formatTimeAgo(lastFetchedTime);
-
                 if (isOffline) {
                     updateStatus.textContent = `Offline. Using rate from ${relativeTime}.`;
                     updateStatus.classList.add('text-yellow-400');
@@ -300,12 +316,13 @@
             function loadFromCache() {
                 const cachedRate = localStorage.getItem(STORAGE_KEYS.RATE);
                 const cachedTime = localStorage.getItem(STORAGE_KEYS.TIMESTAMP);
-
                 if (cachedRate && cachedTime) {
                     exchangeRate = parseFloat(cachedRate);
                     lastFetchedTime = new Date(cachedTime);
-                    updateRateDisplay(true);
+                    updateRateDisplay(true); // Display cached rate
+                    return true; // Indicate success
                 }
+                return false; // Indicate failure
             }
 
             async function fetchExchangeRate() {
@@ -317,10 +334,8 @@
                     if (data.aed && data.aed.inr) {
                         exchangeRate = data.aed.inr;
                         lastFetchedTime = new Date(); 
-                        
                         localStorage.setItem(STORAGE_KEYS.RATE, exchangeRate);
                         localStorage.setItem(STORAGE_KEYS.TIMESTAMP, lastFetchedTime.toISOString());
-                        
                         updateRateDisplay(false); 
                     } else {
                         throw new Error('Could not find INR rate in API response.');
@@ -328,11 +343,12 @@
                 } catch (error) {
                     console.error('Error fetching exchange rate:', error);
                     if (exchangeRate) {
+                        // If fetch fails but we have an old rate, show it
                         updateRateDisplay(true); 
                     } else {
-                        rateDisplay.textContent = 'Could not load rate.';
-                        rateDisplay.classList.add('text-red-400');
-                        updateStatus.textContent = 'Please check your connection.';
+                        // If no rate at all
+                        rateDisplay.innerHTML = `<span class="text-red-400">Could not load rate.</span>`;
+                        updateStatus.textContent = 'Please check connection and try again.';
                     }
                 }
             }
@@ -363,13 +379,19 @@
 
             // --- Event Listeners ---
 
-            aedInput.addEventListener('focus', () => { isAedToInr = true; });
-            inrInput.addEventListener('focus', () => { isAedToInr = false; });
+            aedInput.addEventListener('focus', () => { 
+                isAedToInr = true; 
+                activeInput = aedInput; // Set active input
+            });
+            inrInput.addEventListener('focus', () => { 
+                isAedToInr = false; 
+                activeInput = inrInput; // Set active input
+            });
             
-            aedInput.addEventListener('input', convertAedToInr);
-            inrInput.addEventListener('input', convertInrToAed);
+            // Remove direct input listeners, as we now use the keypad
+            // aedInput.addEventListener('input', convertAedToInr);
+            // inrInput.addEventListener('input', convertInrToAed);
 
-            // Save to history on blur (when user clicks away)
             aedInput.addEventListener('blur', addHistoryItem);
             inrInput.addEventListener('blur', addHistoryItem);
 
@@ -397,20 +419,84 @@
                 }
             });
 
+            // NEW: Event listener for the refresh button
+            getRatesButton.addEventListener('click', () => {
+                // Show immediate feedback that it's working
+                rateDisplay.innerHTML = `
+                    <div class="spinner"></div>
+                    <span>Fetching live rate...</span>
+                `;
+                // Call the existing fetch function
+                fetchExchangeRate();
+            });
+
+            // --- Keypad Logic ---
+            keypad.addEventListener('click', (e) => {
+                const key = e.target.closest('.keypad-button');
+                if (!key || !activeInput) return; // Do nothing if no key or no active input
+
+                const keyValue = key.dataset.key;
+
+                if (keyValue === 'backspace') {
+                    // Handle backspace
+                    activeInput.value = activeInput.value.slice(0, -1);
+                } else if (keyValue === '.') {
+                    // Handle decimal, only add if one doesn't exist
+                    if (!activeInput.value.includes('.')) {
+                        activeInput.value += keyValue;
+                    }
+                } else {
+                    // Handle number
+                    activeInput.value += keyValue;
+                }
+
+                // Manually trigger the correct conversion
+                if (activeInput === aedInput) {
+                    convertAedToInr();
+                } else {
+                    convertInrToAed();
+                }
+            });
+
+            // Add visual press effect for keypad buttons
+            keypad.addEventListener('mousedown', (e) => {
+                const key = e.target.closest('.keypad-button');
+                if (key) key.classList.add('key-active');
+            });
+            keypad.addEventListener('mouseup', (e) => {
+                const key = e.target.closest('.keypad-button');
+                if (key) key.classList.remove('key-active');
+            });
+            // Handle leaving the button while pressed
+            keypad.addEventListener('mouseleave', (e) => {
+                 e.target.closest('.keypad-button')?.classList.remove('key-active');
+            }, true);
+
+
             // --- Initial Load ---
-            loadFromCache();     // Load cached rate instantly
+            const cacheLoaded = loadFromCache();     // Load cached rate instantly
             loadHistory();       // Load saved history
-            fetchExchangeRate(); // Try to get fresh data
+            
+            // If cache was empty, fetch a rate. Otherwise, wait for user.
+            if (!cacheLoaded) {
+                fetchExchangeRate(); // Try to get fresh data only if cache is empty
+            }
 
             // Add an interval to update the relative time every minute
             setInterval(() => {
                 if (lastFetchedTime) {
-                    // Re-run updateRateDisplay to refresh the 'time ago' string.
-                    // We check navigator.onLine to see if we are currently offline.
-                    // This updates the status even if the API fetch fails.
                     updateRateDisplay(!navigator.onLine);
                 }
-            }, 60000); // 60,000 milliseconds = 1 minute
+            }, 60000); // 1 minute
+
+            // Render all Lucide icons
+            lucide.createIcons();
+
+            // --- Set AED as default active input ---
+            activeInput = aedInput;
+            // Programmatically focus for visual feedback (ring)
+            // 'preventScroll' is good practice, though not essential here.
+            aedInput.focus({ preventScroll: true });
         });
     </script>
 
